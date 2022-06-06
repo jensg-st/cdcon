@@ -1,0 +1,25 @@
+description: A simple 'no-op' state that returns 'Hello world!'
+functions:
+- id: trivy
+  image: localhost:5000/trivy
+  type: knative-workflow
+states:
+- id: validate
+  type: validate
+  schema:
+    title: Files
+    type: object
+    properties:
+      image:
+        type: string
+        title: Image to test
+  transition: trivy-test
+- id: trivy-test
+  type: action
+  action:
+    function: trivy
+    input:
+      commands:
+      - command: git clone jq(.url) app
+      - command: gcloud builds submit app --config cloudbuild.yml --format=json --substitutions _REPO=jq(.image)
+  

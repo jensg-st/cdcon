@@ -1,7 +1,34 @@
 description: A simple 'no-op' state that returns 'Hello world!'
+functions:
+- id: gcloud-build
+  image: gcr.io/direktiv/apps/gcloud:1.0
+  type: knative-workflow
+start:
+  type: event
+  state: helloworld
+  event:
+    type: noncompliant
 states:
 - id: helloworld
   type: noop
   transform:
-    result: Hello world!!! Dev
-
+    url: jq(.noncompliant.data.repository.clone_url)
+    image: jq(.noncompliant.data.repository.clone_url | split("/")[-1] | split(".")[0])
+  transition: build
+- id: build
+  type: action
+  action:
+    function: gcloud-build
+    secrets: ["gcloud-key", "gcloud-project", "gcloud-user"]
+    files:
+    - key: cloudbuild-release.steps
+      scope: workflow
+      as: cloudbuild.yml
+    input:
+      key: jq(.secrets."gcloud-key" | @base64 ) 
+      account: jq(.secrets."gcloud-user")
+      project: jq(.secrets."gcloud-project")
+      commands:
+      - command: git clone jq(.url) app
+      - command: gcloud builds submit app --config cloudbuild.yml --format=json --substitutions _REPO=jq(.image)
+  

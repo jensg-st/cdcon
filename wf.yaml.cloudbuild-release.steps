@@ -1,0 +1,9 @@
+
+steps:
+- name: 'gcr.io/cloud-builders/docker'
+  args: [ 'build', '-t', 'eu.gcr.io/direktiv/$_REPO', '.' ]
+
+images: ['eu.gcr.io/direktiv/$_REPO']
+
+substitutions:
+  _REPO: "unknown"
