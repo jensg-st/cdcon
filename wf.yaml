@@ -3,18 +3,29 @@ functions:
 - id: gcloud-build
   image: gcr.io/direktiv/apps/gcloud:1.0
   type: knative-workflow
+- id: run-tests
+  type: subflow
+  workflow: scan
+
+# wait for gitea event. type is 'noncompliant' because gitea does not send cloudevents
 start:
   type: event
-  state: helloworld
+  state: start
   event:
     type: noncompliant
 states:
-- id: helloworld
+
+# transform input data from gitea webhook
+- id: start
   type: noop
+  log: jq(.)
   transform:
     url: jq(.noncompliant.data.repository.clone_url)
     image: jq(.noncompliant.data.repository.clone_url | split("/")[-1] | split(".")[0])
+    name: jq(.noncompliant.data.repository.full_name)
   transition: build
+
+# building the application
 - id: build
   type: action
   action:
@@ -31,4 +42,20 @@ states:
       commands:
       - command: git clone jq(.url) app
       - command: gcloud builds submit app --config cloudbuild.yml --format=json --substitutions _REPO=jq(.image)
+  transition: run-test
   
+# run test subflow
+- id: run-test
+  type: action
+  action:
+    function: run-tests
+    input: 
+      image: eu.gcr.io/direktiv/jq(.image)
+      name: jq(.name)
+  catch: 
+  - error: "detectedVulnerabilities"
+    transition: issue
+
+- id: issue
+  type: noop
+  log: Build was successful but tests failed

@@ -1,25 +1,71 @@
-description: A simple 'no-op' state that returns 'Hello world!'
+description: Scans images with trivy
 functions:
 - id: trivy
-  image: localhost:5000/trivy
-  type: knative-workflow
+  service: trivy
+  type: knative-namespace
 states:
+
+# make sure image is set
 - id: validate
   type: validate
   schema:
     title: Files
     type: object
+    required: ["image","name"]
     properties:
       image:
         type: string
         title: Image to test
+        default: eu.gcr.io/direktiv/my-app
+      name:
+        type: string
+        title: Git name
+        default: direktiv/my-app
   transition: trivy-test
+
+# run trivy test
 - id: trivy-test
   type: action
   action:
     function: trivy
     input:
       commands:
-      - command: git clone jq(.url) app
-      - command: gcloud builds submit app --config cloudbuild.yml --format=json --substitutions _REPO=jq(.image)
-  
+      - command: trivy image -o result.json --format=json jq(.image)
+      - command: cat result.json
+  transform: 
+    vulnerabilities: jq(.return.trivy[1].result.Results[0].Vulnerabilities)
+    name: jq(.name)
+  transition: check
+
+# if there are vulnerabilities this throws an error
+- id: check
+  type: switch
+  log: checking for vulnerabilities
+  defaultTransition: done
+  conditions:
+  - condition: jq(.vulnerabilities | length)
+    transition: raise-issue
+
+# no vulnerabilities
+- id: done
+  log: no vulnerabilities detected
+  type: noop
+
+# raise issue event
+- id: raise-issue
+  type: generateEvent
+  event:
+    type: git.issue
+    source: scan
+    data: 'jq([ .vulnerabilities[] | { "title": .Title, "desc": .Description } ])'
+    datacontenttype: application/json
+    context:
+      git: jq(.name)
+  transition: vulnerabilities
+
+# throw an error
+- id: vulnerabilities
+  log: jq(.vulnerabilities | length) vulnerabilities detected
+  type: error 
+  error: detectedVulnerabilities
+  message: jq(.vulnerabilities | length) vulnerabilities detected

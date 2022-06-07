@@ -1,0 +1,49 @@
+description: Handles build issue events
+
+functions:
+- id: request
+  image: eu.gcr.io/direktiv/apps/http-request:1.0
+  type: knative-workflow
+
+# waiting for issue event
+start:
+  type: event
+  state: create-issue
+  event:
+    type: git.issue
+
+states:
+- id: create-issue
+  type: noop
+  transform:
+    # vulnerabilities: jq(."git.issue".data)
+    git: jq(."git.issue".git)
+    text: |
+      js(
+        let content = '';
+        data["git.issue"]["data"].forEach(element => {
+          content += '### ';
+          content += element["title"];
+          content += '\n';
+          content += element["desc"];
+          content += '\n';
+        });
+        return content
+      )
+  transition: post
+
+- id: post
+  type: action
+  log: posting to http://192.168.86.246:3000/api/v1/repos/jq(.git)/issues
+  action:
+    secrets: ["gitea"]
+    function: request
+    input:
+      url: http://192.168.86.246:3000/api/v1/repos/jq(.git)/issues?token=jq(.secrets.gitea)
+      method: POST
+      errorNo200: true
+      headers: 
+        Content-type: application/json
+      content: 
+        kind: string
+        value: '{ "title": "Trivy issues detected", "body": "The following issues have been detected: \n jq(.text)" }'
