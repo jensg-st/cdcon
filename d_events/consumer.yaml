@@ -1,0 +1,21 @@
+start:
+  type: event
+  event:
+    type: myeventtype
+  state: notify
+states:
+- id: notify
+  type: noop
+  log: jq(.)
+  transition: wait
+- id: wait
+  type: delay
+  duration: PT20S
+  transition: send-event
+- id: send-event
+  type: generateEvent
+  event:
+    type: response
+    source: consumer
+    context:
+      track: jq(.myeventtype.data.track)

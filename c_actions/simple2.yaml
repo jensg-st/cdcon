@@ -1,0 +1,46 @@
+functions:
+- id: aws-cli
+  service: aws-cli
+  type: knative-namespace
+
+states:
+
+# call aws with secrets
+- id: req
+  type: action
+  action:
+    function: aws-cli
+    secrets: ["awsacess", "awssecret"]
+    input:
+     access-key: jq(.secrets.awsacess)
+     secret-key: jq(.secrets.awssecret)
+     region: eu-central-1
+     commands:
+     - command: aws ec2 describe-instances
+       print: false
+       silent: true
+  transition: count
+
+# log and return result
+- id: count
+  type: noop
+  log: There are jq(.return.aws[0].result.Reservations[0].Instances | length) instances
+  transform: 
+    count: jq(.return.aws[0].result.Reservations[0].Instances | length)
+  transition: test
+
+# test 
+- id: test
+  type: switch
+  conditions:
+  - condition: jq(.count % 2 != 0)
+    transition: odd
+  defaultTransition: even
+
+- id: odd
+  type: noop
+  log: ODD jq(.)
+
+- id: even
+  type: noop
+  log: EVEN jq(.)

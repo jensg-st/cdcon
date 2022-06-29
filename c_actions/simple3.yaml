@@ -1,0 +1,19 @@
+functions:
+- id: bash
+  image: gcr.io/direktiv/apps/bash:1.0
+  type: knative-workflow
+
+states:
+
+# call aws with secrets
+- id: bash 
+  type: action
+  action:
+    function: bash
+    files:
+    - key: script.sh 
+      scope: workflow
+    input: 
+      commands:
+      - command: chmod 755 script.sh
+      - command: ./script.sh

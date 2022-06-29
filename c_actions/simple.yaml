@@ -1,0 +1,34 @@
+functions:
+- type: knative-workflow
+  id: request
+  image: direktiv/request
+states:
+
+# simple get request
+- id: dorequest
+  type: action
+  action:
+    function: request
+    input:
+      method: "GET"
+      url: "https://jsonplaceholder.typicode.com/todos/1"
+    retries:
+      max_attempts: 3
+      delay: PT30S
+      multiplier: 2.0
+      codes: [".*"]
+  catch:
+  - error: "*"
+    transition: report-failure
+  transition: show-status
+
+# we get the status from the .return from the action
+- id: show-status
+  type: noop
+  log: jq(.)
+  transform:
+    request-result: jq(.return.status)
+
+- id: report-failure
+  type: noop
+  log: "Error!"

@@ -1,5 +1,25 @@
 states:
+# set inital data coming in if not set
+# Set data example:
+# echo '{ "name": "john" }' |  direktiv-sync exec a_basic/basic.yaml
 - id: start
   type: noop
+  log: jq(.)
   transform:
-    name: jens
+    name: jq(.name // "jens")
+  transition: wait
+
+# wait a sec
+- id: wait
+  type: delay
+  duration: PT1S
+  transition: hello
+
+# write greeting
+- id: hello
+  type: noop
+  transform: |
+      js( 
+        data["greeting"]  = "Hello " + data["name"]
+        return data
+      )

@@ -1,0 +1,20 @@
+states:
+
+# set variables on workflow and instance level
+- id: setvalue
+  type: setter
+  variables:
+  - key: my-wf-var
+    scope: workflow
+    value: jq(.)
+  - key: my-instance-var
+    scope: instance
+    value: jq(.)
+  transition: getter
+
+# after getting the var it is stored under .var in the state
+- id: getter
+  type: getter
+  variables:
+  - key: my-instance-var 
+    scope: instance

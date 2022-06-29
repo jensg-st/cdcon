@@ -1,0 +1,26 @@
+states:
+
+# validate state
+# Working:
+# echo '{ "name": "john" }' |  direktiv-sync exec a_basic/validate.yaml
+# Not Working:
+# direktiv-sync exec a_basic/validate.yaml
+- id: validate
+  type: validate
+  schema:
+    title: Name
+    type: object
+    required:
+    - name
+    properties:
+      file:
+        type: string
+        title: Enter Name
+        default: My Name
+  transition: hello
+
+# execute the greeting
+- id:  hello
+  type: noop
+  transform:
+    greeting: Hello jq(.name)

@@ -1,0 +1,18 @@
+
+# echo '{ "track": "123" } ' |  direktiv-sync exec d_events/producer.yaml
+states:
+- id: gen-event
+  type: generateEvent
+  event:
+    type: myeventtype
+    source: myeventsource
+    context:
+      id: jq(.track)
+  transition: wait
+- id: wait
+  type: consumeEvent
+  timeout: PT15M
+  event:
+    type: response
+    context:
+      track: jq(.track)
